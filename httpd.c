@@ -84,7 +84,9 @@ void accept_request(void *arg)
     }
 
     if (strcasecmp(method, "POST") == 0)
+    {
         cgi = 1;
+    }
 
     i = 0;
     while (ISspace(buf[j]) && (j < numchars))
@@ -517,7 +519,7 @@ int main(void)
         client_sock = accept(server_sock,
                              (struct sockaddr *)&client_name,
                              &client_name_len);
-        printf("accept success\n");                     
+        printf("accept success\n");
         if (client_sock == -1)
         {
             error_die("accept");
@@ -537,3 +539,4 @@ int main(void)
 // 相关资料
 // socket 编程 http://c.biancheng.net/socket/
 // memset() 的作用是在一段内存块中填充某个给定的值
+// pthread https://www.cnblogs.com/shijiaqi1066/p/5769417.html
