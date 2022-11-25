@@ -66,7 +66,11 @@ void accept_request(void *arg)
                   * program */
     char *query_string = NULL;
 
+    // 解析HTTP协议的请求行 Method Request-URI HTTP-Version CRLF
     numchars = get_line(client, buf, sizeof(buf));
+    printf("buf:%s\n", buf);
+
+    // 从请求行中解析出Method
     i = 0;
     j = 0;
     while (!ISspace(buf[i]) && (i < sizeof(method) - 1))
@@ -77,20 +81,28 @@ void accept_request(void *arg)
     j = i;
     method[i] = '\0';
 
+    printf("method:%s\n", method);
+
+    // 只实现了GET和POST Method
     if (strcasecmp(method, "GET") && strcasecmp(method, "POST"))
     {
         unimplemented(client);
         return;
     }
 
+    // POST Method is CGI
     if (strcasecmp(method, "POST") == 0)
     {
         cgi = 1;
     }
 
     i = 0;
+    // 跳过空格
     while (ISspace(buf[j]) && (j < numchars))
+    {
         j++;
+    }
+    // 从请求行中解析出Request-URI
     while (!ISspace(buf[j]) && (i < sizeof(url) - 1) && (j < numchars))
     {
         url[i] = buf[j];
@@ -98,12 +110,16 @@ void accept_request(void *arg)
         j++;
     }
     url[i] = '\0';
+    printf("url:%s\n", url);
 
     if (strcasecmp(method, "GET") == 0)
     {
         query_string = url;
+        // 遍历query_string数组，遇到?或\0停止
         while ((*query_string != '?') && (*query_string != '\0'))
+        {
             query_string++;
+        }
         if (*query_string == '?')
         {
             cgi = 1;
@@ -113,22 +129,36 @@ void accept_request(void *arg)
     }
 
     sprintf(path, "htdocs%s", url);
+    printf("path:%s\n", path);
+
+    // 如果url最后一个字符是/，则请求index.html页面
     if (path[strlen(path) - 1] == '/')
+    {
         strcat(path, "index.html");
+    }
+    printf("path:%s\n", path);
+
     if (stat(path, &st) == -1)
     {
-        while ((numchars > 0) && strcmp("\n", buf)) /* read & discard headers */
+        /* read & discard headers */
+        while ((numchars > 0) && strcmp("\n", buf))
+        {
             numchars = get_line(client, buf, sizeof(buf));
+        }
         not_found(client);
     }
     else
     {
         if ((st.st_mode & S_IFMT) == S_IFDIR)
+        {
             strcat(path, "/index.html");
+        }
         if ((st.st_mode & S_IXUSR) ||
             (st.st_mode & S_IXGRP) ||
             (st.st_mode & S_IXOTH))
+        {
             cgi = 1;
+        }
         if (!cgi)
             serve_file(client, path);
         else
