@@ -41,6 +41,7 @@ void cannot_execute(int);
 void error_die(const char *);
 void execute_cgi(int, const char *, const char *, const char *);
 int get_line(int, char *, int);
+char *get_line_2(int sock);
 void headers(int, const char *);
 void not_found(int);
 void serve_file(int, const char *);
@@ -55,7 +56,9 @@ void unimplemented(int);
 void accept_request(void *arg)
 {
     int client = (intptr_t)arg;
-    char buf[1024];
+    // char buf[1024];
+    char *buf = get_line_2(client);
+    
     size_t numchars;
     char method[255];
     char url[255];
@@ -199,11 +202,13 @@ void cat(int client, FILE *resource)
 {
     char buf[1024];
 
-    fgets(buf, sizeof(buf), resource);
+    // fgets(buf, sizeof(buf), resource);
+    // printf("after fgets buf:%s", buf);
     while (!feof(resource))
     {
-        send(client, buf, strlen(buf), 0);
         fgets(buf, sizeof(buf), resource);
+        printf("after fgets buf:%s", buf);
+        send(client, buf, strlen(buf), 0);
     }
 }
 
@@ -340,6 +345,56 @@ void execute_cgi(int client, const char *path,
         close(cgi_input[1]);
         waitpid(pid, &status, 0);
     }
+}
+
+char *get_line_2(int sock)
+{
+    char *buf = malloc(10);
+    if (buf == NULL)
+    {
+        printf("malloc fail!");
+        exit(EXIT_FAILURE);
+    }
+    int i = 0;
+    char c = '\0';
+    int n;
+    while (1)
+    {
+        if (c == '\n')
+        {
+            break;
+        }
+        n = recv(sock, &c, 1, 0);
+        if (n > 0)
+        {
+            if (c == '\r')
+            {
+                n = recv(sock, &c, 1, MSG_PEEK);
+                if ((n > 0) && (c == '\n'))
+                {
+                    recv(sock, &c, 1, 0);
+                }
+                else
+                {
+                    c = '\n';
+                }
+            }
+            if (i > sizeof(buf))
+            {
+                // buf扩容
+                buf = (char *) realloc(buf, sizeof(buf) + 10);
+            }
+            buf[i] = c;
+            i++;
+        }
+        else
+        {
+            c = '\n';
+        }
+    }
+    buf[i] = '\0';
+
+    return buf;
 }
 
 /**********************************************************************/
